@@ -98,7 +98,6 @@ yearly_avg_wind <- combined_data %>%
 
 yearly_avg_wind$Year <- as.numeric(as.character(yearly_avg_wind$Year))
 
-# 绘图
 ggplot(yearly_avg_wind, aes(x = Year)) +
   geom_line(aes(y = avg_wind_speed, color = "Wind Speed")) +
   geom_line(aes(y = avg_gst, color = "Gst")) +
@@ -118,4 +117,5 @@ ggplot(yearly_avg_wind, aes(x = Year)) +
     axis.text.x = element_text(angle = 45, hjust = 1)
   )
 ```
+
 Answer: From the plot, the variation of Gst is similar as the variation of wind speed. Therefore, the wind speed and Gst are correlated. Besides, from physics, the gst represents the max value of wind speed, so these two values should be highly correlated.
