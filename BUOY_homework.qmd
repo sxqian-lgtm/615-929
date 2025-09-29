@@ -1,0 +1,121 @@
+---
+title: "BUOY"
+format: html
+editor: visual
+---
+
+```{r, warning = FALSE, message=FALSE}
+library(data.table)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(zoo)
+library(tibble)
+library(readr)
+```
+
+\*data loading\*
+
+```{r, warning=FALSE, message=FALSE}
+file_root <- "https://www.ndbc.noaa.gov/view_text_file.php?filename=44013h"
+tail <- ".txt.gz&dir=data/historical/stdmet/"
+
+load_buoy_data <- function(year) {
+  path <- paste0(file_root, year, tail)
+
+  header <- scan(path, what = 'character', nlines = 1)
+  num_columns <- length(header)  
+
+  if (num_columns == 16) {
+    buoy <- read.table(path, fill = TRUE, header = TRUE, sep = "")
+    buoy <- add_column(buoy, mm = NA, .after = "hh")
+    buoy <- add_column(buoy, TIDE = NA, .after = "VIS")
+
+  } else if (num_columns == 17) {
+    buoy <- read.table(path, fill = TRUE, header = TRUE, sep = "")
+    buoy <- add_column(buoy, TIDE = NA, .after = "VIS")
+
+  } else {
+    buoy <- fread(path, header = FALSE, skip = 1, fill = TRUE)
+    setnames(buoy, header)
+  }
+
+  return(buoy)
+}
+all_data <- lapply(1985:2024, load_buoy_data)
+combined_data <- rbindlist(all_data, fill = TRUE)
+```
+
+```{r}
+combined_data <- combined_data %>%
+  mutate(
+    YY = as.character(YY),
+    `#YY` = as.character(`#YY`),
+    YYYY = as.character(YYYY)
+  )
+
+# Combine year columns safely using coalesce
+combined_data <- combined_data %>%
+  mutate(YYYY = coalesce(YYYY, `#YY`, YY))
+combined_data <- combined_data %>%
+  mutate(BAR = coalesce(as.numeric(BAR), as.numeric(PRES)),  # Convert BAR and PRES to numeric
+    WD = coalesce(as.numeric(WD), as.numeric(WDIR)))
+
+combined_data <- combined_data %>%
+  select(-TIDE, -TIDE.1, -mm,- WDIR, -PRES,-`#YY`,-YY)
+
+combined_data$datetime <- ymd_h(paste(combined_data$YYYY, combined_data$MM, combined_data$DD, combined_data$hh, sep = "-"))
+
+combined_data <- combined_data %>%
+  mutate(across(everything(), 
+                ~ na_if(as.numeric(as.character(.)), 99) %>%
+                na_if(999) %>%
+                na_if(9999)))
+
+if (!inherits(combined_data$datetime, "POSIXct")) {
+  combined_data$datetime <- ymd_h(paste(combined_data$YYYY, combined_data$MM, combined_data$DD, combined_data$hh, sep = "-"))
+}
+
+```
+
+### Question
+
+Is correlated the annual average wind speed and the annual average gst?
+
+```{r}
+
+combined_data <- combined_data %>%
+  mutate(Year = year(datetime))
+
+
+yearly_avg_wind <- combined_data %>%
+  group_by(Year) %>%
+  summarise(
+    avg_wind_speed = mean(WSPD, na.rm = TRUE),
+    avg_gst       = mean(GST, na.rm = TRUE)
+  )
+
+
+yearly_avg_wind$Year <- as.numeric(as.character(yearly_avg_wind$Year))
+
+# 绘图
+ggplot(yearly_avg_wind, aes(x = Year)) +
+  geom_line(aes(y = avg_wind_speed, color = "Wind Speed")) +
+  geom_line(aes(y = avg_gst, color = "Gst")) +
+  scale_x_continuous(
+    breaks = seq(min(yearly_avg_wind$Year, na.rm = TRUE),
+                 max(yearly_avg_wind$Year, na.rm = TRUE),
+                 2) 
+  ) +
+  labs(
+    title = "Wind Speed and Gst Trends Over Time",
+    x = "Year", 
+    y = "Speed (m/s)", 
+    color = "Legend"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+Answer: From the plot, the variation of Gst is similar as the variation of wind speed. Therefore, the wind speed and Gst are correlated. Besides, from physics, the gst represents the max value of wind speed, so these two values should be highly correlated.
