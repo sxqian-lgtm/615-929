@@ -1,0 +1,182 @@
+---
+title: "615-919-R4DS"
+format: html
+editor: visual
+---
+
+## R4DS
+
+```{r}
+library(nycflights13)
+library(dplyr)
+
+```
+
+*3.2.5*
+
+1
+
+```{r}
+flights %>%
+  filter(arr_delay >= 120)
+flights %>%
+  filter(dest %in% c("IAH", "HOU"))
+flights %>%
+  filter(carrier %in% c("UA", "AA", "DL"))
+flights %>%
+  filter(month %in% 7:9)
+flights %>%
+  filter(arr_delay > 120, dep_delay <= 0)
+flights %>%
+  filter(dep_delay >= 60, dep_delay - arr_delay > 30)
+```
+
+4
+
+```{r}
+flights%>%
+  arrange(desc(dep_delay))
+flights%>%
+  arrange(dep_time)
+
+```
+
+5
+
+```{r}
+flights %>%
+  slice_max(distance)
+flights %>%
+  slice_min(distance)
+```
+
+*3.3.5*
+
+1
+
+Answer: From my perspective, these three numbers are related. dep_time is the real time of departure, sched_dep_time is the scheduled time of departure, and the dep_delay is delayed time. Therefore, there is an eqution: dep_delay = dep_time - sched_dep_time.
+
+4
+
+Answer: any_of() will select columns names existed in vector x in data frame. if name existed in vector x is not in data frame, any_of() will ignores this name automatically and runs.
+
+*3.5.7*
+
+1
+
+```{r}
+library(dplyr)
+library(nycflights13)
+
+flights %>%
+  group_by(carrier) %>%
+  summarise(
+    mean_arr_delay = mean(arr_delay, na.rm = TRUE),
+    mean_dep_delay = mean(dep_delay, na.rm = TRUE),
+    n = n()
+  ) %>%
+  arrange(desc(mean_arr_delay))
+
+flights %>%
+  group_by(carrier, dest) %>%
+  summarise(
+    mean_arr_delay = mean(arr_delay, na.rm = TRUE),
+    n = n()
+  )
+
+```
+
+Answer: The worst carrier is F9. It is hard to disentangle the effects of bad airports or bad carriers. because the delay is caused by the combination of carriers and airports.
+
+2
+
+```{r}
+flights %>%
+  group_by(dest) %>%
+  slice_max(dep_delay)
+```
+
+4
+
+```{r}
+df <- tibble(x = c(1,1,2,2,3,3,4,4,5,5,6,7,7,8,8))
+
+slice_min(df, x, n = 5)
+
+slice_min(df, x, n = -5)
+
+```
+
+Answer: Slice_min(n=-5) will select and sort all rows except the rows with 5 largest numbers. Slice_max(n=-5) will select and sort all rows except the rows with 5 smallest numbers.
+
+6
+
+```{r}
+df <- tibble(
+  x = 1:5,
+  y = c("a", "b", "a", "a", "b"),
+  z = c("K", "K", "L", "L", "K")
+)
+```
+
+a
+
+```{r}
+df |>
+  group_by(y)
+```
+
+Answer:Group_by(y) adds mark of group: Groups y\[2\].
+
+b
+
+```{r}
+df |>
+  arrange(y)
+```
+
+Answer: arrange() sorts the df by y column.
+
+c
+
+```{r}
+df |>
+  group_by(y) |>
+  summarize(mean_x = mean(x))
+```
+
+Answer: First, group by y. Then, take the mean value of x in each group.
+
+d
+
+```{r}
+df |>
+  group_by(y, z) |>
+  summarize(mean_x = mean(x))
+```
+
+Answer: Group by y and z column and add the mean_x to every group.
+
+e
+
+```{r}
+ df |>
+  group_by(y, z) |>
+  summarize(mean_x = mean(x), .groups = "drop")
+```
+
+Answer: compared with d, the expression Drops the mark: Groups:y \[2\].
+
+f
+
+```{r}
+df |>
+  group_by(y, z) |>
+  summarize(mean_x = mean(x))
+
+df |>
+  group_by(y, z) |>
+  mutate(mean_x = mean(x))
+```
+
+Answer: In the first expression, it will express three rows that represent every group.Then, every row will have a new column mean_x. Besides, In the second expression, it will show the original data and add a new column mean_x.
